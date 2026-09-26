@@ -1,0 +1,55 @@
+# Klear And Klarity - backend on Render
+#
+# Create the blueprint at https://render.com/blueprint, or push this file and pick
+# "New > Blueprint" in the dashboard. Paths are relative to the repo root.
+#
+# DATABASE: Render does not host MySQL. Create a free MySQL-compatible cluster first
+# (TiDB Cloud Starter needs no card) and fill in the DB_* values marked sync: false,
+# either in the dashboard or in a .env file next to this one.
+#
+# runtime: native means Render's own build image does the work, so no Docker is
+# needed. backend/Dockerfile is an alternative if you would rather pin the JDK.
+
+services:
+  - type: web
+    name: klear-and-klarity-api
+    runtime: native
+    plan: free
+    region: singapore
+    buildCommand: cd backend && ./mvnw -B -DskipTests package
+    # The free tier has 512 MB, so cap the heap and leave room for Metaspace and
+    # direct byte buffers. UseSerialGC keeps pause times short on a 0.1 CPU share.
+    startCommand: >-
+      java -Xmx320m -XX:MaxMetaspaceSize=128m -XX:+UseSerialGC
+      -jar backend/target/guidance-plus-1.0.0.jar
+    healthCheckPath: /api/public/settings
+    envVars:
+      # These are the values the deployed app reads. Real environment variables win
+      # over backend/.env, so backend/.env does not need to exist on the server.
+      - key: DB_URL
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRATION_MINUTES
+        value: "720"
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: MAIL_FROM_NAME
+        value: Klear And Klarity
+      - key: MAIL_FROM_ADDRESS
+        sync: false
+      # Must be the deployed Cloudflare Pages URL. Comma-separate to allow several.
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: MAIL_BASE_URL
+        sync: false
+      # Blank turns email verification on automatically once MAIL_USERNAME and
+      # MAIL_PASSWORD are both present.
+      - key: MAIL_VERIFICATION_REQUIRED
+        value: ""
